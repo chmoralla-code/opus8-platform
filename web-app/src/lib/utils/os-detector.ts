@@ -51,13 +51,26 @@ export function getDownloadText(os: OperatingSystem): string {
 
 /**
  * Get the download link for the detected OS.
+ * Points to GitHub Releases until we have a CDN.
  */
+const GITHUB_RELEASES = 'https://github.com/chmoralla-code/opus8-platform/releases';
+const GITHUB_LATEST = 'https://github.com/chmoralla-code/opus8-platform/releases/latest';
+
 export function getDownloadLink(os: OperatingSystem): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opus8.ai';
-  switch (os) {
-    case 'windows': return `${base}/downloads/opus8-setup.exe`;
-    case 'macos': return `${base}/downloads/opus8-setup.dmg`;
-    case 'linux': return `${base}/downloads/opus8-setup.AppImage`;
-    default: return `${base}/downloads`;
+  // Always point to GitHub Releases — the build artifacts will be there
+  // once the GitHub Actions pipeline runs (build-desktop.yml)
+  return GITHUB_LATEST;
+}
+
+/**
+ * Check if a desktop build exists. For now always returns false
+ * until the CI pipeline has run at least once.
+ */
+export async function checkDesktopBuildExists(): Promise<boolean> {
+  try {
+    const res = await fetch('https://api.github.com/repos/chmoralla-code/opus8-platform/releases/latest');
+    return res.ok;
+  } catch {
+    return false;
   }
 }

@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { detectOS, getDownloadText, getDownloadLink, getOSDisplayName } from '@/lib/utils/os-detector';
+import { detectOS, getDownloadText, getDownloadLink, getOSDisplayName, checkDesktopBuildExists } from '@/lib/utils/os-detector';
 import type { OperatingSystem } from '@shared/types';
 import { THEME } from '@shared/constants';
 
 export default function LandingPage() {
   const [os, setOS] = useState<OperatingSystem>('unknown');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [downloadExists, setDownloadExists] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export default function LandingPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setIsLoggedIn(!!user);
     });
+    checkDesktopBuildExists().then(setDownloadExists);
   }, []);
 
   return (
@@ -48,15 +50,29 @@ export default function LandingPage() {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
           {/* OS-Aware Download Button */}
-          <a
-            href={getDownloadLink(os)}
-            className="btn-primary text-lg px-8 py-4 shadow-lg"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-            </svg>
-            {getDownloadText(os)}
-          </a>
+          {downloadExists ? (
+            <a
+              href={getDownloadLink(os)}
+              className="btn-primary text-lg px-8 py-4 shadow-lg"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+              {getDownloadText(os)}
+            </a>
+          ) : (
+            <a
+              href="https://github.com/chmoralla-code/opus8-platform"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-primary text-lg px-8 py-4 shadow-lg opacity-80 hover:opacity-100"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+              </svg>
+              View Source on GitHub →
+            </a>
+          )}
 
           {isLoggedIn ? (
             <Link
