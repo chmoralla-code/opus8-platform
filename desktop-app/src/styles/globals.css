@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Opus8 Desktop — Claude Premium Theme
+   ============================================================ */
+
+:root {
+  --claude-cream: #FBF9F6;
+  --claude-charcoal: #191919;
+  --claude-accent: #CC5A37;
+  --claude-accent-hover: #D47550;
+  --claude-accent-light: #E8A87C;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow: hidden;
+}
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #4B5563; }
+
+/* ---- Buttons ---- */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem;
+  font-weight: 600; color: white; transition: all 0.2s;
+  background-color: var(--claude-accent); border: none; cursor: pointer;
+}
+.btn-primary:hover {
+  background-color: var(--claude-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(204,90,55,0.3);
+}
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+.btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem;
+  font-weight: 600; color: var(--claude-accent); transition: all 0.2s;
+  background: transparent; border: 1.5px solid var(--claude-accent); cursor: pointer;
+}
+.btn-secondary:hover { background-color: rgba(204,90,55,0.06); }
+
+/* ---- Cards ---- */
+.card {
+  border-radius: 0.75rem; padding: 1rem;
+  background-color: white; border: 1px solid #E5E0D8;
+}
+.dark .card { background-color: #242424; border-color: #333333; }
+
+/* ---- Input Fields ---- */
+.input-field {
+  width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
+  border: 1px solid #E5E0D8; background: white; color: var(--claude-charcoal);
+  font-size: 0.875rem; transition: all 0.2s;
+}
+.dark .input-field {
+  border-color: #333333; background: #242424; color: var(--claude-cream);
+}
+.input-field:focus {
+  outline: none; border-color: var(--claude-accent);
+  box-shadow: 0 0 0 3px rgba(204,90,55,0.12);
+}
+
+/* ---- Streaming Cursor Animation ---- */
+.streaming-cursor::after {
+  content: ''; display: inline-block; width: 2px; height: 1em;
+  background-color: var(--claude-accent); margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-pulse 1s cubic-bezier(0.4,0,0.6,1) infinite;
+}
+@keyframes cursor-pulse {
+  0%, 100% { opacity: 1; } 50% { opacity: 0; }
+}
+
+/* ---- Token Fade-in Animation ---- */
+.stream-token {
+  animation: tokenFadeIn 0.3s ease-out;
+}
+@keyframes tokenFadeIn {
+  0% { opacity: 0; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Usage Bar Colors ---- */
+.usage-bar-green { background: linear-gradient(90deg, #10B981, #34D399); }
+.usage-bar-orange { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
+.usage-bar-red { background: linear-gradient(90deg, #DC2626, #EF4444); animation: barBlink 1s step-end infinite; }
+
+@keyframes barBlink {
+  0%, 100% { opacity: 1; } 50% { opacity: 0.5; }
+}
+
+/* ---- Slide Up Animation ---- */
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 0.3s ease-out; }

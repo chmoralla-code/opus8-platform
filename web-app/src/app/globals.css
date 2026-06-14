@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Opus8 Platform — Claude-Inspired Global Styles
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@layer base {
+  :root {
+    --claude-cream: #FBF9F6;
+    --claude-charcoal: #191919;
+    --claude-accent: #CC5A37;
+    --claude-accent-hover: #D47550;
+    --claude-accent-light: #E8A87C;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--claude-cream);
+    color: var(--claude-charcoal);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark body,
+  .dark {
+    background-color: var(--claude-charcoal);
+    color: var(--claude-cream);
+  }
+}
+
+@layer components {
+  /* --- Primary Button --- */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200;
+    background-color: var(--claude-accent);
+  }
+  .btn-primary:hover {
+    background-color: var(--claude-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(204, 90, 55, 0.3);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  /* --- Secondary Button --- */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all duration-200;
+    border: 1.5px solid var(--claude-accent);
+    color: var(--claude-accent);
+    background: transparent;
+  }
+  .btn-secondary:hover {
+    background-color: rgba(204, 90, 55, 0.06);
+  }
+
+  /* --- Card --- */
+  .card {
+    @apply rounded-xl p-6 transition-all duration-200;
+    background-color: white;
+    border: 1px solid #E5E0D8;
+  }
+  .dark .card {
+    background-color: #242424;
+    border-color: #333333;
+  }
+  .card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  /* --- Input --- */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg border text-base transition-all duration-200;
+    border-color: #E5E0D8;
+    background: white;
+    color: var(--claude-charcoal);
+  }
+  .dark .input-field {
+    border-color: #333333;
+    background: #242424;
+    color: var(--claude-cream);
+  }
+  .input-field:focus {
+    @apply outline-none;
+    border-color: var(--claude-accent);
+    box-shadow: 0 0 0 3px rgba(204, 90, 55, 0.12);
+  }
+
+  /* --- Streaming Cursor --- */
+  .streaming-cursor::after {
+    content: '';
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background-color: var(--claude-accent);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: cursor-pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes cursor-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* --- Stream Fade-in --- */
+  .stream-token {
+    animation: tokenFadeIn 0.3s ease-out;
+  }
+
+  @keyframes tokenFadeIn {
+    0% { opacity: 0; transform: translateY(2px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- Usage Bar Colors --- */
+  .usage-bar-green {
+    background: linear-gradient(90deg, #10B981, #34D399);
+  }
+  .usage-bar-orange {
+    background: linear-gradient(90deg, #F59E0B, #FBBF24);
+  }
+  .usage-bar-red {
+    background: linear-gradient(90deg, #DC2626, #EF4444);
+    animation: barBlink 1s step-end infinite;
+  }
+
+  @keyframes barBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* --- Scrollbar Styling --- */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #D1D5DB;
+    border-radius: 3px;
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: #4B5563;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
