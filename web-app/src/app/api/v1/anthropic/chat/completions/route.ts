@@ -87,25 +87,43 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // ---- 4. Determine model tier ----
+  // ---- 4. Determine model tier & provider ----
   const modelLower = model.toLowerCase();
-  const tier: 'pro' | 'flash' | 'research' =
+  const isGemini = modelLower.includes('gemini');
+
+  const tier =
+    isGemini && modelLower.includes('pro') ? 'gemini-pro' :
+    isGemini && modelLower.includes('flash') ? 'gemini-flash' :
     modelLower.includes('deepseek-v4-pro') || modelLower.includes('pro') ? 'pro' :
     modelLower.includes('deepseek-v4-flash') || modelLower.includes('flash') ? 'flash' :
-    modelLower.includes('pollinations') || modelLower.includes('free') ? 'research' : 'pro';
+    modelLower.includes('pollinations') || modelLower.includes('free') ? 'research' :
+    'pro';
 
-  const rates = tier === 'research' ? RATES.flash : RATES[tier];
-
-  // ---- 5. Forward to DeepSeek ----
-  const deepseekPayload = {
-    model: tier === 'pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash',
-    messages: messages,
-    stream: stream ?? true,
-    temperature: 0.7,
-    max_tokens: 4096,
-  };
+  const rates = tier === 'research'
+    ? RATES.flash
+    : RATES[tier as keyof typeof RATES] ?? RATES.pro;
 
   try {
+    // ---- 5a. Route to Gemini (Google AI API) ----
+    if (isGemini) {
+      return handleGeminiRequest(
+        body,
+        supabaseService,
+        authenticatedUserId,
+        tier as 'gemini-pro' | 'gemini-flash',
+        walletBalance,
+      );
+    }
+
+    // ---- 5b. Route to DeepSeek ----
+    const deepseekPayload = {
+      model: tier === 'pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash',
+      messages: messages,
+      stream: stream ?? true,
+      temperature: 0.7,
+      max_tokens: 4096,
+    };
+
     const deepseekResponse = await fetch(
       process.env.DEEPSEEK_BASE_URL + '/chat/completions',
       {
@@ -132,9 +150,10 @@ export async function POST(request: NextRequest) {
         deepseekResponse,
         supabaseService,
         authenticatedUserId,
-        tier,
+        tier as 'pro' | 'flash' | 'research',
         walletBalance,
-        body.model
+        body.model,
+        'deepseek'
       );
     }
 
@@ -145,7 +164,7 @@ export async function POST(request: NextRequest) {
     const tokenUsage: TokenUsage = {
       inputTokens: usage.prompt_tokens,
       outputTokens: usage.completion_tokens,
-      model: tier,
+      model: tier as TokenUsage['model'],
     };
 
     const billing = calculateBilling(tokenUsage);
@@ -180,15 +199,246 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Handle Gemini API request — converts OpenAI-format messages to Google AI format,
+ * sends to Gemini endpoint, and handles the different response/stream format.
+ */
+async function handleGeminiRequest(
+  body: ProxyRequest,
+  supabaseService: any,
+  userId: string,
+  tier: 'gemini-pro' | 'gemini-flash',
+  initialBalance: number,
+): Promise<Response> {
+  const geminiModel = tier === 'gemini-pro' ? 'gemini-2.5-pro' : 'gemini-2.5-flash';
+  const geminiUrl = `${process.env.GEMINI_BASE_URL}/models/${geminiModel}:${
+    body.stream ? 'streamGenerateContent' : 'generateContent'
+  }?key=${process.env.GEMINI_API_KEY}`;
+
+  // Convert OpenAI-style messages to Google Gemini format
+  const contents = body.messages.map((msg) => ({
+    role: msg.role === 'assistant' ? 'model' : msg.role,
+    parts: [{ text: msg.content }],
+  }));
+
+  const geminiPayload = {
+    contents,
+    generationConfig: {
+      temperature: 0.7,
+      maxOutputTokens: 4096,
+    },
+  };
+
+  const geminiResponse = await fetch(geminiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(geminiPayload),
+  });
+
+  if (!geminiResponse.ok) {
+    const errorText = await geminiResponse.text();
+    return NextResponse.json(
+      { error: `Gemini API error: ${geminiResponse.status}`, detail: errorText },
+      { status: geminiResponse.status }
+    );
+  }
+
+  if (body.stream) {
+    return handleGeminiStreamingResponse(
+      geminiResponse,
+      supabaseService,
+      userId,
+      tier,
+      initialBalance,
+      geminiModel,
+    );
+  }
+
+  // Non-streaming Gemini response
+  const geminiResult: any = await geminiResponse.json();
+  const candidate = geminiResult.candidates?.[0];
+  const text = candidate?.content?.parts?.[0]?.text ?? '';
+  const inputTokens = geminiResult.usageMetadata?.promptTokenCount ?? 0;
+  const outputTokens = geminiResult.usageMetadata?.candidatesTokenCount ?? 0;
+
+  const tokenUsage: TokenUsage = { inputTokens, outputTokens, model: tier };
+  const billing = calculateBilling(tokenUsage);
+  const cost = billing.costPhp;
+
+  const newBalance = Math.max(0, initialBalance - cost);
+  await supabaseService
+    .from('profiles')
+    .update({ wallet_balance: newBalance })
+    .eq('id', userId);
+
+  await supabaseService.from('token_usage_log').insert({
+    user_id: userId,
+    model: geminiModel,
+    input_tokens: tokenUsage.inputTokens,
+    output_tokens: tokenUsage.outputTokens,
+    cost_php: cost,
+  });
+
+  // Return in OpenAI-compatible format
+  return NextResponse.json({
+    id: `gemini-${Date.now()}`,
+    object: 'chat.completion',
+    choices: [{
+      index: 0,
+      message: { role: 'assistant', content: text },
+      finish_reason: candidate?.finishReason ?? 'STOP',
+    }],
+    usage: {
+      prompt_tokens: inputTokens,
+      completion_tokens: outputTokens,
+      total_tokens: inputTokens + outputTokens,
+    },
+    billing: { ...billing, remainingBalance: newBalance },
+  });
+}
+
+/**
+ * Handle Gemini streaming SSE response and convert to OpenAI-compatible SSE format.
+ */
+function handleGeminiStreamingResponse(
+  geminiResponse: Response,
+  supabaseService: any,
+  userId: string,
+  tier: 'gemini-pro' | 'gemini-flash',
+  initialBalance: number,
+  modelName: string,
+): Response {
+  let outputTokens = 0;
+  let inputTokens = 0;
+  let streamKilled = false;
+
+  const encoder = new TextEncoder();
+  const decoder = new TextDecoder();
+
+  const readable = new ReadableStream({
+    async start(controller) {
+      const reader = geminiResponse.body?.getReader();
+      if (!reader) { controller.close(); return; }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            await finalizeGeminiBilling();
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+            break;
+          }
+
+          const chunk = decoder.decode(value, { stream: true });
+
+          // Gemini returns JSON lines, not SSE
+          // Each line is a JSON object with candidates[]
+          try {
+            const parsed = JSON.parse(chunk);
+            const candidate = parsed.candidates?.[0];
+
+            if (candidate?.content?.parts) {
+              for (const part of candidate.content.parts) {
+                if (part.text) {
+                  outputTokens += Math.ceil(part.text.length / 4); // rough token estimate
+                  const sseChunk = JSON.stringify({
+                    choices: [{ delta: { content: part.text }, index: 0, finish_reason: null }],
+                  });
+                  controller.enqueue(encoder.encode(`data: ${sseChunk}\n\n`));
+                }
+              }
+            }
+
+            if (parsed.usageMetadata?.promptTokenCount) {
+              inputTokens = parsed.usageMetadata.promptTokenCount;
+              outputTokens = parsed.usageMetadata.candidatesTokenCount ?? outputTokens;
+            }
+
+            // Balance enforcement every ~50 estimated tokens
+            if (!streamKilled && outputTokens > 0 && outputTokens % 50 === 0) {
+              const rates = RATES[tier];
+              const estimatedCost =
+                (inputTokens / 1_000_000) * rates.inputPerMillion * 2 +
+                (outputTokens / 1_000_000) * rates.outputPerMillion * 2;
+
+              const { data: freshProfile } = await supabaseService
+                .from('profiles')
+                .select('wallet_balance')
+                .eq('id', userId)
+                .single();
+
+              const remaining = Number(freshProfile?.wallet_balance ?? 0);
+              if (remaining <= 0) {
+                streamKilled = true;
+                await finalizeGeminiBilling();
+                const killMsg = JSON.stringify({
+                  choices: [{
+                    delta: { content: '\n\n⚠️ *Balance depleted. Please top up via GCash.*' },
+                    index: 0,
+                    finish_reason: 'balance_limit',
+                  }],
+                });
+                controller.enqueue(encoder.encode(`data: ${killMsg}\n\n`));
+                controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+                controller.close();
+                return;
+              }
+            }
+          } catch {
+            // Skip unparseable chunks
+          }
+        }
+      } catch (error) {
+        controller.error(error);
+      }
+
+      async function finalizeGeminiBilling() {
+        if (outputTokens === 0) return;
+        const tokenUsage: TokenUsage = {
+          inputTokens: Math.max(inputTokens, 1),
+          outputTokens,
+          model: tier,
+        };
+        const billing = calculateBilling(tokenUsage);
+        const cost = billing.costPhp;
+        const newBalance = Math.max(0, initialBalance - cost);
+        await supabaseService
+          .from('profiles')
+          .update({ wallet_balance: newBalance })
+          .eq('id', userId);
+        await supabaseService.from('token_usage_log').insert({
+          user_id: userId,
+          model: modelName,
+          input_tokens: tokenUsage.inputTokens,
+          output_tokens: tokenUsage.outputTokens,
+          cost_php: cost,
+        });
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'x-model': modelName,
+      'x-provider': 'google',
+    },
+  });
+}
+
+/**
  * Handle streaming response with real-time billing and balance enforcement.
  */
 function handleStreamingResponse(
   deepseekResponse: Response,
   supabaseService: any,
   userId: string,
-  tier: 'pro' | 'flash' | 'research',
+  tier: 'pro' | 'flash' | 'research' | 'gemini-pro' | 'gemini-flash',
   initialBalance: number,
   modelName: string,
+  provider: 'deepseek' | 'google' = 'deepseek',
 ): Response {
   let inputTokens = 0;
   let outputTokens = 0;

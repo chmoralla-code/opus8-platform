@@ -37,7 +37,7 @@ export interface ApiKey {
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
-  model: 'pro' | 'flash' | 'research';
+  model: 'pro' | 'flash' | 'research' | 'gemini-pro' | 'gemini-flash';
 }
 
 export interface BillingResult {

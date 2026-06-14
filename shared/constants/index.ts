@@ -32,16 +32,31 @@ export const MODEL_BRANDS = {
     displayName: 'Claude Opus 8 Pro',
     description: 'Most capable model for complex coding tasks',
     tier: 'pro' as const,
+    provider: 'deepseek' as const,
   },
   'deepseek-v4-flash': {
     displayName: 'Claude Opus 8 Flash',
     description: 'Fast and efficient for everyday coding',
     tier: 'flash' as const,
+    provider: 'deepseek' as const,
   },
   'pollinations-free': {
     displayName: 'Claude Opus 8 Research (Free)',
     description: 'Free research-grade model via Pollinations AI',
     tier: 'research' as const,
+    provider: 'pollinations' as const,
+  },
+  'gemini-2.5-flash': {
+    displayName: 'Gemini 2.5 Flash',
+    description: "Google's fast multimodal model. Supports images, code, and text.",
+    tier: 'gemini-flash' as const,
+    provider: 'google' as const,
+  },
+  'gemini-2.5-pro': {
+    displayName: 'Gemini 2.5 Pro',
+    description: "Google's most capable model for complex reasoning and long context.",
+    tier: 'gemini-pro' as const,
+    provider: 'google' as const,
   },
 } as const;
 
@@ -58,6 +73,14 @@ export const RATES = {
   flash: {
     inputPerMillion: 17.02,    // PHP
     outputPerMillion: 34.04,   // PHP
+  },
+  'gemini-pro': {
+    inputPerMillion: 151.93,    // PHP ($1.25 * 60.77 * 2)
+    outputPerMillion: 1215.40,  // PHP ($10.00 * 60.77 * 2)
+  },
+  'gemini-flash': {
+    inputPerMillion: 18.23,    // PHP ($0.15 * 60.77 * 2)
+    outputPerMillion: 72.92,   // PHP ($0.60 * 60.77 * 2)
   },
 } as const;
 
