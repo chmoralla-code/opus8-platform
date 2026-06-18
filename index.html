@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hormachuelos — AI Coding Platform (Free)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, #0f0f0f 0%, #1a1a1a 50%, #0d1117 100%);
+      color: #e0e0e0; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 2rem; text-align: center;
+    }
+    h1 {
+      font-size: 2.5rem; font-weight: 800; margin-bottom: 0.25rem;
+      background: linear-gradient(135deg, #CC5A37, #e07050);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .free-badge {
+      display: inline-block; margin: 0.5rem 0 1.5rem;
+      padding: 4px 14px; font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: #fff; background: linear-gradient(135deg, #22c55e, #16a34a);
+      border-radius: 6px; box-shadow: 0 2px 12px rgba(34,197,94,0.4);
+    }
+    .card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 2rem; max-width: 540px; width: 100%;
+      margin: 1rem 0; text-align: left;
+    }
+    .card h2 { font-size: 1.1rem; margin-bottom: 0.75rem; color: #CC5A37; }
+    .card p { font-size: 0.9rem; color: #999; line-height: 1.6; margin-bottom: 0.5rem; }
+    .btn {
+      display: inline-block; padding: 14px 28px; font-size: 1rem;
+      font-weight: 700; color: #fff; text-decoration: none; border-radius: 12px;
+      background: linear-gradient(135deg, #CC5A37, #e07050);
+      box-shadow: 0 4px 20px rgba(204,90,55,0.4);
+      transition: transform 0.15s, box-shadow 0.15s; margin: 0.5rem;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(204,90,55,0.5); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: none;
+    }
+    .btn-secondary:hover { box-shadow: 0 4px 16px rgba(255,255,255,0.08); }
+    .features {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1rem; margin: 1.5rem 0; max-width: 600px; width: 100%;
+    }
+    .feature {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 12px; padding: 1.25rem;
+    }
+    .feature .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .feature h3 { font-size: 0.95rem; margin-bottom: 0.25rem; }
+    .feature p { font-size: 0.8rem; color: #888; line-height: 1.5; }
+    footer { margin-top: 2rem; font-size: 0.75rem; color: #555; }
+    footer a { color: #888; text-decoration: none; }
+    footer a:hover { color: #CC5A37; }
+  </style>
+</head>
+<body>
+  <div style="font-size:3rem;margin-bottom:0.5rem">🤖</div>
+  <h1>Hormachuelos</h1>
+  <span class="free-badge">FREE VERSION</span>
+
+  <p style="color:#999;max-width:480px;margin-bottom:1.5rem;line-height:1.6">
+    AI-powered coding assistant for Windows. Write code, debug projects,
+    and build software faster with Claude Opus, DeepSeek, GPT, and 15+ AI providers.
+  </p>
+
+  <div style="margin-bottom:1rem">
+    <a href="./Hormachuelos-Setup.zip" class="btn">⬇ Download Installer</a>
+  </div>
+  <p style="font-size:0.8rem;color:#666;margin-bottom:1.5rem">Windows 10/11 &bull; Free &bull; No admin required</p>
+
+  <div class="features">
+    <div class="feature">
+      <div class="icon">🧠</div>
+      <h3>Multi-Model AI</h3>
+      <p>Claude, DeepSeek, GPT, and 15+ providers via a single interface</p>
+    </div>
+    <div class="feature">
+      <div class="icon">📁</div>
+      <h3>File System Access</h3>
+      <p>Read, write, and search your entire project from the chat</p>
+    </div>
+    <div class="feature">
+      <div class="icon">💻</div>
+      <h3>Terminal Integration</h3>
+      <p>Run commands and scripts directly from the AI chat interface</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔄</div>
+      <h3>Agent Swarms</h3>
+      <p>Multi-agent coordination for complex coding tasks via Ruflo</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📥 How to Install</h2>
+    <p>1. <strong>Download</strong> the installer ZIP above</p>
+    <p>2. <strong>Extract</strong> to any folder on your PC</p>
+    <p>3. Run <strong>Setup.bat</strong> (double-click)</p>
+    <p>4. Launch from <strong>Desktop shortcut</strong> or <strong>Start Menu</strong></p>
+    <p style="margin-top:0.75rem;font-size:0.8rem;color:#666">
+      💡 The installer creates shortcuts and registers an uninstaller — no admin rights needed.
+    </p>
+  </div>
+
+  <footer>
+    <p>Hormachuelos v1.0.0 &mdash; FREE VERSION</p>
+  </footer>
+</body>
+</html>
