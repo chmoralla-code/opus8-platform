@@ -10,6 +10,17 @@ declare global {
   }
 }
 
+function previewSourceFrom(text: string) {
+  const localUrl = text.match(/\bhttps?:\/\/(?:localhost|127\.0\.0\.1):\d+(?:\/[^\s"'<>)]*)?/i)?.[0];
+  if (localUrl) return localUrl;
+
+  const fileUrl = text.match(/\bfile:\/\/\/?[A-Za-z]:\/[^\s"'<>)]*?\.(?:html?|svg)\b/i)?.[0];
+  if (fileUrl) return fileUrl;
+
+  const filePath = text.match(/\b[A-Za-z]:\\[^\r\n"'<>|]+?\.(?:html?|svg)\b/i)?.[0];
+  return filePath ? `file:///${filePath.replace(/\\/g, '/')}` : '';
+}
+
 export default function App() {
   // ---- State ----
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -26,7 +37,9 @@ export default function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showThinking, setShowThinking] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState(() => (
+    localStorage.getItem('opus8-live-preview-url') || 'http://localhost:3000'
+  ));
 
   const billing = useBilling(settings);
 
@@ -39,6 +52,27 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', settings.theme === 'dark');
   }, [settings.theme]);
+
+  useEffect(() => {
+    const latest = [...messages].reverse().map((msg) => previewSourceFrom(msg.content)).find(Boolean);
+    if (latest) {
+      setPreviewUrl(latest);
+      localStorage.setItem('opus8-live-preview-url', latest);
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const onPreviewTarget = (event: Event) => {
+      const detail = (event as CustomEvent<{ target?: string }>).detail;
+      const target = detail?.target ? previewSourceFrom(detail.target) || detail.target : '';
+      if (target) {
+        setPreviewUrl(target);
+        localStorage.setItem('opus8-live-preview-url', target);
+      }
+    };
+    window.addEventListener('opus8-preview-target', onPreviewTarget);
+    return () => window.removeEventListener('opus8-preview-target', onPreviewTarget);
+  }, []);
 
   // ---- Model Selection ----
   const currentModel = modelBrands[settings.selectedModel] ?? modelBrands['deepseek-v4-pro'];
@@ -176,10 +210,10 @@ export default function App() {
                         <span className="streaming-cursor" />
                       )}
                     </p>
-                    {msg.thinking && msg.thinking.length > 0 && showThinking && (
-                      <details className="tool-code-details">
+                    {msg.thinking && msg.thinking.length > 0 && (
+                      <details className="tool-code-details" open>
                         <summary>
-                          Show code / agentic execution ({msg.thinking.length} steps)
+                          Agentic execution ({msg.thinking.length} steps)
                         </summary>
                         <pre>
                           {msg.thinking.map((block) => (
@@ -225,15 +259,15 @@ export default function App() {
           <div className="h-8 border-b border-claude-border-light dark:border-claude-border-dark flex items-center px-3 gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500" />
             <span className="text-xs font-medium">Preview</span>
-            <span className="text-[10px] text-claude-text-secondary-light dark:text-claude-text-secondary-dark">
-              localhost:3000
+            <span className="text-[10px] text-claude-text-secondary-light dark:text-claude-text-secondary-dark truncate">
+              {previewUrl}
             </span>
           </div>
           <iframe
-            src="http://localhost:3000"
+            src={previewUrl}
             className="flex-1 border-0 bg-white"
             title="Live Preview"
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
           />
         </div>
       </div>

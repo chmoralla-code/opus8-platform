@@ -45,6 +45,7 @@ async function autoOpenLocalArtifacts(text: string) {
   const targets = collectOpenTargets(text);
   for (const target of targets) {
     try {
+      window.dispatchEvent(new CustomEvent('opus8-preview-target', { detail: { target } }));
       await open(target);
     } catch {
       // Preview opening is best-effort; the chat response should still complete.

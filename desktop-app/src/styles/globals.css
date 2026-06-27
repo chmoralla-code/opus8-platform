@@ -110,8 +110,10 @@ html, body, #root {
 .user-message-row { justify-content: flex-end; }
 .assistant-message {
   position: relative;
-  width: min(920px, calc(100vw - 64px));
-  max-width: min(920px, calc(100vw - 64px));
+  width: min(920px, calc(100% - 1rem));
+  max-width: min(920px, calc(100% - 1rem));
+  margin: 0;
+  align-self: flex-start;
   padding: 0.85rem 1.1rem 1rem 1.9rem;
   background: transparent;
   border: 0;
@@ -164,7 +166,7 @@ html, body, #root {
   padding-left: 0.75rem;
 }
 .tool-code-details summary {
-  cursor: pointer;
+  cursor: default;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--mono-muted);
@@ -181,6 +183,10 @@ html, body, #root {
   font-size: 0.75rem;
   line-height: 1.55;
   white-space: pre-wrap;
+}
+
+iframe[title="Live Preview"] {
+  min-width: 0;
 }
 
 @keyframes barBlink {
