@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import { open } from '@tauri-apps/plugin-shell';
 import type { ChatMessage, ThinkingBlock } from '@shared/types';
 import { getModelTier } from '@/lib/model-brands';
 
@@ -7,6 +8,48 @@ interface UseChatStreamOptions {
   billingMode: 'platform' | 'byok';
   model: string;
   centralDomain: string;
+}
+
+function isSafeExecutableTarget(target: string) {
+  const normalized = target.replace(/\//g, '\\');
+  return /\.(exe|msi|bat|cmd)$/i.test(normalized) &&
+    /^[A-Za-z]:\\Users\\/i.test(normalized) &&
+    !/\\(Windows|Program Files|Program Files \(x86\)|AppData)\\/i.test(normalized);
+}
+
+function normalizeFileUrl(target: string) {
+  return decodeURI(target).replace(/^file:\/\/\/?/i, '').replace(/\//g, '\\');
+}
+
+function addFileTarget(targets: Set<string>, target: string) {
+  const normalized = target.replace(/\//g, '\\');
+  if (/\.(html?)$/i.test(normalized) || isSafeExecutableTarget(normalized)) {
+    targets.add(normalized);
+  }
+}
+
+function collectOpenTargets(text: string) {
+  const targets = new Set<string>();
+  const urlMatches = text.match(/\bhttps?:\/\/(?:localhost|127\.0\.0\.1):\d+(?:\/[^\s"'<>)]*)?/gi) ?? [];
+  const fileMatches = text.match(/\b[A-Za-z]:\\[^\r\n"'<>|]+?\.(?:html?|exe|msi|bat|cmd)\b/gi) ?? [];
+  const fileUrlMatches = text.match(/\bfile:\/\/\/?[A-Za-z]:\/[^\s"'<>)]*?\.(?:html?|exe|msi|bat|cmd)\b/gi) ?? [];
+
+  urlMatches.forEach((target) => targets.add(target));
+  fileMatches.forEach((target) => addFileTarget(targets, target));
+  fileUrlMatches.forEach((target) => addFileTarget(targets, normalizeFileUrl(target)));
+
+  return Array.from(targets).slice(0, 3);
+}
+
+async function autoOpenLocalArtifacts(text: string) {
+  const targets = collectOpenTargets(text);
+  for (const target of targets) {
+    try {
+      await open(target);
+    } catch {
+      // Preview opening is best-effort; the chat response should still complete.
+    }
+  }
 }
 
 /**
@@ -98,6 +141,7 @@ export function useChatStream(options: UseChatStreamOptions) {
       };
 
       onComplete(assistantMessage);
+      await autoOpenLocalArtifacts(fullContent);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         onError(err.message);

@@ -4,6 +4,12 @@ import { useBilling } from './hooks/useBilling';
 import { modelBrands } from './lib/model-brands';
 import type { ChatMessage, AppSettings } from '@shared/types';
 
+declare global {
+  interface Window {
+    __opus8ExportChat?: (messages: ChatMessage[]) => void;
+  }
+}
+
 export default function App() {
   // ---- State ----
   const [settings, setSettings] = useState<AppSettings>(() => {
@@ -150,13 +156,20 @@ export default function App() {
               messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`message-row flex ${msg.role === 'user' ? 'user-message-row' : 'assistant-message-row'}`}
                 >
-                  <div className={`max-w-[80%] rounded-xl px-4 py-3 ${
+                  <div className={`rounded-xl px-4 py-3 ${
                     msg.role === 'user'
-                      ? 'bg-claude-accent text-white'
-                      : 'card'
+                      ? 'user-message'
+                      : 'assistant-message'
                   }`}>
+                    {msg.role !== 'user' && (
+                      <div className="assistant-meta">
+                        <span className="assistant-avatar">AI</span>
+                        <span>{msg.model ?? currentModel.displayName}</span>
+                        <span>Reply</span>
+                      </div>
+                    )}
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">
                       {msg.content}
                       {isStreaming && msg.id === messages[messages.length - 1]?.id && (
@@ -164,17 +177,15 @@ export default function App() {
                       )}
                     </p>
                     {msg.thinking && msg.thinking.length > 0 && showThinking && (
-                      <details className="mt-2">
-                        <summary className="text-xs text-claude-text-secondary-light dark:text-claude-text-secondary-dark cursor-pointer">
-                          Thinking Process ({msg.thinking.length} steps)
+                      <details className="tool-code-details">
+                        <summary>
+                          Show code / agentic execution ({msg.thinking.length} steps)
                         </summary>
-                        <div className="mt-2 space-y-1 pl-2 border-l-2 border-claude-accent-light">
+                        <pre>
                           {msg.thinking.map((block) => (
-                            <div key={block.id} className="text-xs text-claude-text-secondary-light dark:text-claude-text-secondary-dark font-mono">
-                              [{block.type}] {block.content.slice(0, 100)}...
-                            </div>
-                          ))}
-                        </div>
+                            `[${block.type}] ${block.content}`
+                          )).join('\n\n')}
+                        </pre>
                       </details>
                     )}
                   </div>
@@ -242,7 +253,7 @@ export default function App() {
 function ClaudeLogo({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect width="32" height="32" rx="8" fill="#CC5A37" />
+      <rect width="32" height="32" rx="8" fill="#111111" />
       <path d="M16 6C10.477 6 6 10.477 6 16s4.477 10 10 10 10-4.477 10-10S21.523 6 16 6z"
         stroke="white" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
       <circle cx="13" cy="14" r="1.5" fill="white"/>

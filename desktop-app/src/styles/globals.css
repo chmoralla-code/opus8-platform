@@ -3,30 +3,35 @@
 @tailwind utilities;
 
 /* ============================================================
-   Opus8 Desktop — Claude Premium Theme
+   Opus8 Desktop — Monochrome Operator Theme
    ============================================================ */
 
 :root {
-  --claude-cream: #FBF9F6;
-  --claude-charcoal: #191919;
-  --claude-accent: #CC5A37;
-  --claude-accent-hover: #D47550;
-  --claude-accent-light: #E8A87C;
+  --claude-cream: #F6F6F3;
+  --claude-charcoal: #101010;
+  --claude-accent: #111111;
+  --claude-accent-hover: #2A2A2A;
+  --claude-accent-light: #6F6F6A;
+  --mono-panel: #FFFFFF;
+  --mono-panel-2: #ECECE8;
+  --mono-line: #D7D7D0;
+  --mono-muted: #62625D;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body, #root {
   height: 100%;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans', 'Aptos', 'Segoe UI Variable', 'Inter', system-ui, sans-serif;
+  letter-spacing: 0;
   overflow: hidden;
 }
 
 /* ---- Scrollbar ---- */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 3px; }
-.dark ::-webkit-scrollbar-thumb { background: #4B5563; }
+::-webkit-scrollbar-thumb { background: #B8B8B2; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #555552; }
 
 /* ---- Buttons ---- */
 .btn-primary {
@@ -37,8 +42,8 @@ html, body, #root {
 }
 .btn-primary:hover {
   background-color: var(--claude-accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(204,90,55,0.3);
+  transform: none;
+  box-shadow: none;
 }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
@@ -46,29 +51,32 @@ html, body, #root {
   display: inline-flex; align-items: center; justify-content: center;
   gap: 0.5rem; padding: 0.5rem 1rem; border-radius: 0.5rem;
   font-weight: 600; color: var(--claude-accent); transition: all 0.2s;
-  background: transparent; border: 1.5px solid var(--claude-accent); cursor: pointer;
+  background: transparent; border: 1.5px solid var(--mono-line); cursor: pointer;
 }
-.btn-secondary:hover { background-color: rgba(204,90,55,0.06); }
+.btn-secondary:hover { background-color: var(--mono-panel-2); }
 
 /* ---- Cards ---- */
 .card {
   border-radius: 0.75rem; padding: 1rem;
-  background-color: white; border: 1px solid #E5E0D8;
+  background-color: var(--mono-panel); border: 1px solid var(--mono-line);
 }
-.dark .card { background-color: #242424; border-color: #333333; }
+.dark .card {
+  background-color: #171717;
+  border-color: #303030;
+}
 
 /* ---- Input Fields ---- */
 .input-field {
   width: 100%; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
-  border: 1px solid #E5E0D8; background: white; color: var(--claude-charcoal);
+  border: 1px solid var(--mono-line); background: var(--mono-panel); color: var(--claude-charcoal);
   font-size: 0.875rem; transition: all 0.2s;
 }
 .dark .input-field {
-  border-color: #333333; background: #242424; color: var(--claude-cream);
+  border-color: #303030; background: #171717; color: var(--claude-cream);
 }
 .input-field:focus {
   outline: none; border-color: var(--claude-accent);
-  box-shadow: 0 0 0 3px rgba(204,90,55,0.12);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08);
 }
 
 /* ---- Streaming Cursor Animation ---- */
@@ -92,9 +100,88 @@ html, body, #root {
 }
 
 /* ---- Usage Bar Colors ---- */
-.usage-bar-green { background: linear-gradient(90deg, #10B981, #34D399); }
-.usage-bar-orange { background: linear-gradient(90deg, #F59E0B, #FBBF24); }
-.usage-bar-red { background: linear-gradient(90deg, #DC2626, #EF4444); animation: barBlink 1s step-end infinite; }
+.usage-bar-green, .usage-bar-orange, .usage-bar-red {
+  background: var(--claude-accent);
+  animation: none;
+}
+
+.message-row { width: 100%; }
+.assistant-message-row { justify-content: flex-start; }
+.user-message-row { justify-content: flex-end; }
+.assistant-message {
+  position: relative;
+  width: min(920px, calc(100vw - 64px));
+  max-width: min(920px, calc(100vw - 64px));
+  padding: 0.85rem 1.1rem 1rem 1.9rem;
+  background: transparent;
+  border: 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  box-shadow: none;
+  text-align: left;
+}
+.assistant-message::before {
+  content: '';
+  position: absolute;
+  left: 0.6rem;
+  top: 0.9rem;
+  bottom: 1rem;
+  width: 2px;
+  border-radius: 999px;
+  background: var(--claude-accent);
+}
+.assistant-message * { text-align: left; }
+.assistant-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--mono-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.assistant-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: var(--claude-accent);
+  color: white;
+  font-size: 0.55rem;
+}
+.user-message {
+  max-width: min(72%, 680px);
+  border-radius: 0.5rem;
+  background: var(--claude-accent);
+  color: white;
+  text-align: left;
+}
+.tool-code-details {
+  margin-top: 0.6rem;
+  border-left: 2px solid var(--mono-line);
+  padding-left: 0.75rem;
+}
+.tool-code-details summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--mono-muted);
+}
+.tool-code-details pre {
+  margin-top: 0.5rem;
+  max-height: 18rem;
+  overflow: auto;
+  border-radius: 0.5rem;
+  background: #111;
+  color: #f7f7f4;
+  padding: 0.75rem;
+  font-family: 'JetBrains Mono', 'Cascadia Code', Consolas, monospace;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
 
 @keyframes barBlink {
   0%, 100% { opacity: 1; } 50% { opacity: 0.5; }
