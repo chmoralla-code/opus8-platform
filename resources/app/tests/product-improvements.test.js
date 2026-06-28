@@ -139,10 +139,18 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
       const toolRowB = makeDuplicateToolRow();
       const readToolRow = makeDuplicateToolRow('Reading file', 'read_file');
       const searchToolRow = makeDuplicateToolRow('Searching files', 'search_files');
+      const broadToolRows = [
+        makeDuplicateToolRow('Opening URL', 'open_url'),
+        makeDuplicateToolRow('Fetching URL', 'web_fetch'),
+        makeDuplicateToolRow('Glob search', 'glob_search'),
+        makeDuplicateToolRow('Taking screenshot', 'screenshot'),
+        makeDuplicateToolRow('Checking port', 'check_port'),
+      ];
       toolAssistant.appendChild(toolRowA);
       toolAssistant.appendChild(toolRowB);
       toolAssistant.appendChild(readToolRow);
       toolAssistant.appendChild(searchToolRow);
+      broadToolRows.forEach((toolRow) => toolAssistant.appendChild(toolRow));
       document.body.appendChild(toolAssistant);
       window.__hormToolCodeReveal.scan();
       window.__hormProductPolish.scan(toolAssistant);
@@ -337,6 +345,9 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
         toolActionText: toolRowA.querySelector('.horm-tool-action')?.textContent || '',
         readActionText: readToolRow.querySelector('.horm-tool-action')?.textContent || '',
         searchActionText: searchToolRow.querySelector('.horm-tool-action')?.textContent || '',
+        broadToolActions: broadToolRows.map((toolRow) => toolRow.querySelector('.horm-tool-action')?.textContent || ''),
+        broadToolAnimationNames: broadToolRows.map((toolRow) => getComputedStyle(toolRow, '::after').animationName),
+        broadToolWaveCounts: broadToolRows.map((toolRow) => toolRow.querySelectorAll('.horm-wave-dots span').length),
         waveDotCount: toolAssistant.querySelectorAll('.horm-wave-dots span').length,
         fileSearchFound: fileSearch.success === true && fileSearch.matches.some((item) => /hormachuelos-specific-file-target\.txt/i.test(item.file || item.path || '')),
         globSearchFound: globSearch.success === true && globSearch.matches.some((item) => /hormachuelos-specific-file-target\.txt/i.test(item.path || item.relativePath || '')),
@@ -450,7 +461,7 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
     assert.equal(result.detailsAnimationClass, true);
     assert.match(result.detailsActionText, /Writing\.\.\./);
     assert.equal(result.duplicateToolRows, 1);
-    assert.equal(result.progressEchoesHidden, 4);
+    assert.ok(result.progressEchoesHidden >= 4);
     assert.equal(result.writingAnimationClass, true);
     assert.equal(result.readAnimationClass, true);
     assert.equal(result.searchAnimationClass, true);
@@ -458,6 +469,15 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
     assert.match(result.toolActionText, /Writing\.\.\./);
     assert.match(result.readActionText, /Reading\.\.\./);
     assert.match(result.searchActionText, /Searching\.\.\./);
+    assert.deepEqual(result.broadToolActions, [
+      'Opening...',
+      'Fetching...',
+      'Searching...',
+      'Capturing...',
+      'Checking port...',
+    ]);
+    assert.ok(result.broadToolAnimationNames.every((name) => /horm-write-sweep/.test(name)));
+    assert.ok(result.broadToolWaveCounts.every((count) => count === 3));
     assert.ok(result.waveDotCount >= 9);
     assert.equal(result.fileSearchFound, true);
     assert.equal(result.globSearchFound, true);

@@ -90,6 +90,19 @@
       .toLowerCase();
   }
 
+  var TOOL_NAME_RE = /(read_file|write_file|edit_file|append_file|delete_file|read_json|list_dir|list_directory|glob_search|grep_search|search_files|find_files|run_command|execute_shell|web_search|web_fetch|fetch_url|open_url|download_file|serve_directory|open_browser|preview_path|preview_url|create_project|spawn_agent|ruflo_memory_store|ruflo_memory_search|ruflo_agent_spawn|ruflo_web_search|ruflo_task_create|system_info|list_processes|kill_process|clipboard_read|clipboard_write|screenshot|zip_directory|unzip_archive|notify|get_env|set_env|check_port|find_open_port|git_init|git_commit|list_tools)/;
+  var TOOL_VERB_RE = /(writing file|reading file|editing file|appending file|deleting file|reading json|listing(?: directory)?|searching(?: files| code| web| memory)?|glob(?:bing)?|grep(?:ping)?|running command|executing command|fetching(?: url| page)?|opening(?: url| browser)?|downloading|starting server|preview(?:ing)?|running agent|spawning agent|storing memory|creating task|inspecting system|listing processes|killing process|reading clipboard|writing clipboard|taking screenshot|capturing screenshot|zipping|unzipping|notifying|reading env|reading environment|setting env|setting environment|checking port|finding open port|using git)/;
+
+  function toolNameFromText(text) {
+    var match = normalize(text).match(TOOL_NAME_RE);
+    return match ? match[1] : '';
+  }
+
+  function hasToolSignal(text) {
+    var raw = normalize(text);
+    return TOOL_NAME_RE.test(raw) || TOOL_VERB_RE.test(raw);
+  }
+
   var MODEL_BRANDS = [
     { match: /pollinations-free|pollinations ai|hormachuelos(?:\s*\(free\))*|claude opus micro(?:\s*\(free\))*/i, replace: /\b(?:pollinations-free|pollinations ai|hormachuelos(?:\s*\(free\))*|claude opus micro(?:\s*\(free\))*)\b/ig, label: 'Hormachuelos (free)', brand: 'H' },
     { match: /openrouter-free|openrouter(?:\s*\(free\))*|claude opus code(?:\s*\(free\))*/i, replace: /\b(?:openrouter-free|openrouter(?:\s*\(free\))*|claude opus code(?:\s*\(free\))*)\b/ig, label: 'OpenRouter (free)', brand: 'OR' },
@@ -255,7 +268,9 @@
     for (var i = 0; i < blocks.length; i++) {
       var parsed = parseJsonish(textOf(blocks[i]));
       if (!parsed || typeof parsed !== 'object') continue;
-      var target = parsed.path || parsed.filePath || parsed.file || parsed.dirPath || parsed.url || parsed.command || parsed.cmd || parsed.query || parsed.task;
+      var target = parsed.path || parsed.filePath || parsed.file || parsed.dirPath || parsed.sourceDir || parsed.outputPath ||
+        parsed.zipPath || parsed.destDir || parsed.url || parsed.command || parsed.cmd || parsed.query || parsed.task ||
+        parsed.title || parsed.key || parsed.pattern || parsed.dir || parsed.filter || parsed.pid || parsed.port || parsed.startPort;
       if (target) return String(target);
     }
     var titleNode = row.querySelector('[title]');
@@ -269,8 +284,7 @@
     if (row === document.body || row === document.documentElement) return false;
     var text = normalize(textOf(row));
     if (!text) return false;
-    return /\b(read_file|write_file|edit_file|append_file|delete_file|read_json|list_dir|list_directory|glob_search|grep_search|search_files|run_command|execute_shell|web_search|web_fetch|fetch_url|download_file|serve_directory|open_browser|preview_path|preview_url|create_project|spawn_agent|git_init|git_commit|list_tools)\b/.test(text) ||
-      /\b(writing file|reading file|editing file|appending file|deleting file|reading json|listing|searching|glob|grep|running command|executing command|fetching|downloading|starting server|opening browser|running agent|spawning agent|preview)\b/.test(text);
+    return hasToolSignal(text);
   }
 
   function toolHeaderText(row) {
@@ -287,8 +301,8 @@
 
   function toolRowKey(row) {
     var header = toolHeaderText(row);
-    var tool = (header.match(/\b(read_file|write_file|edit_file|append_file|delete_file|read_json|list_dir|list_directory|glob_search|grep_search|search_files|run_command|execute_shell|web_search|web_fetch|fetch_url|download_file|serve_directory|open_browser|preview_path|preview_url|create_project|spawn_agent|git_init|git_commit|list_tools)\b/) || [])[1] || '';
-    var verb = (header.match(/\b(writing file|reading file|editing file|appending file|deleting file|reading json|listing|searching|glob|grep|running command|executing command|fetching|downloading|starting server|opening browser|running agent|spawning agent|preview)\b/) || [])[1] || '';
+    var tool = toolNameFromText(header);
+    var verb = (header.match(TOOL_VERB_RE) || [])[1] || '';
     var target = targetFromToolRow(row);
     return [tool || verb || header, target || header].join(':');
   }
@@ -318,23 +332,39 @@
     if (/delete_file|deleting file/.test(raw)) return 'Deleting';
     if (/read_json|reading json/.test(raw)) return 'Reading JSON';
     if (/list_dir|list_directory|listing/.test(raw)) return 'Listing';
-    if (/glob_search|grep_search|search_files|web_search|searching|grep|glob|web search/.test(raw)) return 'Searching';
+    if (/glob_search|grep_search|search_files|find_files|web_search|ruflo_web_search|ruflo_memory_search|searching|grep|glob|web search/.test(raw)) return 'Searching';
     if (/run_command|execute_shell|running command|executing command/.test(raw)) return 'Running';
     if (/web_fetch|fetch_url|fetching/.test(raw)) return 'Fetching';
     if (/download_file|downloading/.test(raw)) return 'Downloading';
     if (/serve_directory|starting server/.test(raw)) return 'Starting';
-    if (/open_browser|opening browser/.test(raw)) return 'Opening';
+    if (/open_url|open_browser|opening url|opening browser/.test(raw)) return 'Opening';
     if (/preview_path|preview_url|preview/.test(raw)) return 'Previewing';
     if (/create_project/.test(raw)) return 'Scaffolding';
-    if (/spawn_agent|running agent|spawning agent/.test(raw)) return 'Spawning agent';
+    if (/spawn_agent|ruflo_agent_spawn|running agent|spawning agent/.test(raw)) return 'Spawning agent';
+    if (/ruflo_memory_store|storing memory/.test(raw)) return 'Storing memory';
+    if (/ruflo_task_create|creating task/.test(raw)) return 'Creating task';
+    if (/system_info|inspecting system/.test(raw)) return 'Inspecting system';
+    if (/list_processes|listing processes/.test(raw)) return 'Listing processes';
+    if (/kill_process|killing process/.test(raw)) return 'Killing process';
+    if (/clipboard_read|reading clipboard/.test(raw)) return 'Reading clipboard';
+    if (/clipboard_write|writing clipboard/.test(raw)) return 'Writing clipboard';
+    if (/screenshot|taking screenshot|capturing screenshot/.test(raw)) return 'Capturing';
+    if (/zip_directory|zipping/.test(raw)) return 'Zipping';
+    if (/unzip_archive|unzipping/.test(raw)) return 'Unzipping';
+    if (/notify|notifying/.test(raw)) return 'Notifying';
+    if (/get_env|reading env|reading environment/.test(raw)) return 'Reading env';
+    if (/set_env|setting env|setting environment/.test(raw)) return 'Setting env';
+    if (/check_port|checking port/.test(raw)) return 'Checking port';
+    if (/find_open_port|finding open port/.test(raw)) return 'Finding port';
     if (/git_init|git_commit/.test(raw)) return 'Using git';
     return 'Working';
   }
 
   function decorateToolAction(row) {
-    if (!row || row.dataset.hormToolActionReady === '1') return;
+    if (!row) return;
+    if (row.dataset.hormToolActionReady === '1' && row.querySelector('.horm-tool-action .horm-wave-dots')) return;
     var label = toolActionLabel(toolHeaderText(row) || textOf(row));
-    var candidates = row.querySelectorAll('span,div');
+    var candidates = row.querySelectorAll('span,div,summary');
     var target = null;
     for (var i = 0; i < candidates.length; i++) {
       var el = candidates[i];
@@ -342,12 +372,16 @@
       if (el.children && el.children.length > 0) continue;
       var raw = normalize(textOf(el));
       if (!raw) continue;
-      if (/\b(writing file|reading file|editing file|appending file|deleting file|reading json|listing|searching|running command|executing command|fetching|downloading|starting server|opening browser|running agent|spawning agent|preview)\b/.test(raw)) {
+      if (hasToolSignal(raw)) {
         target = el;
         break;
       }
     }
-    if (!target) target = row.querySelector('span,div') || row;
+    if (!target) {
+      var host = row.querySelector('summary') || row.firstElementChild || row;
+      target = document.createElement('span');
+      host.insertBefore(target, host.firstChild || null);
+    }
     target.classList.add('horm-tool-action');
     target.textContent = label + '...';
     var dots = document.createElement('span');
@@ -367,7 +401,7 @@
       var text = normalize(textOf(el)).replace(/\s+/g, ' ').trim();
       if (!text) continue;
       var hasDots = el.querySelector('.wave-dots,[class*="wave-dots"]') || /\.{2,}$/.test(text);
-      var isProgress = /^(writing file|reading file|editing file|listing directory|running command|executing command|fetching|web search|running agent|preview)\s*\.{0,3}$/.test(text);
+      var isProgress = TOOL_VERB_RE.test(text) || hasToolSignal(text);
       if (hasDots && isProgress) el.classList.add('horm-tool-progress-echo');
     }
   }
@@ -650,6 +684,20 @@
     }
   }
 
+  function outerToolRow(row) {
+    var node = row;
+    while (node && node.parentElement && node.parentElement !== document.body) {
+      var parent = node.parentElement;
+      if (parent.matches && parent.matches('.horm-codex-assistant,details')) break;
+      if (parent.matches && parent.matches('.horm-inline-tool-row,[data-tool-call-id],[data-tool-name],div.text-xs,div[class*="text-xs"],div[class*="tool"],li[class*="tool"]') && hasToolSignal(textOf(parent))) {
+        node = parent;
+        continue;
+      }
+      break;
+    }
+    return node || row;
+  }
+
   function cleanupToolRows(root) {
     var scope = root && root.querySelectorAll ? root : document;
     var containers = [];
@@ -669,9 +717,14 @@
     }
 
     for (var c = 0; c < containers.length; c++) {
-      var candidates = containers[c].querySelectorAll('.horm-inline-tool-row, div.text-xs.py-0\\.5, div[class*="text-xs"][class*="py-0.5"]');
+      var candidates = containers[c].querySelectorAll('.horm-inline-tool-row,[data-tool-call-id],[data-tool-name],div.text-xs,div[class*="text-xs"],div[class*="tool"],li[class*="tool"]');
+      var visitedRows = [];
       for (var r = 0; r < candidates.length; r++) {
-        var row = candidates[r];
+        var row = outerToolRow(candidates[r]);
+        if (visitedRows.indexOf(row) !== -1) continue;
+        visitedRows.push(row);
+        var parentToolRow = row.parentElement && row.parentElement.closest('.horm-inline-tool-row,.horm-active-tool-row');
+        if (parentToolRow && parentToolRow !== row && !(parentToolRow.classList && parentToolRow.classList.contains('horm-codex-assistant'))) continue;
         if (!looksLikeToolRow(row)) continue;
         row.classList.add('horm-inline-tool-row');
         row.classList.add('horm-active-tool-row');
