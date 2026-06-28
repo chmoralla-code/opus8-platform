@@ -162,12 +162,19 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
       const fileSearch = await window.opus8.searchFiles('hormachuelos-specific-file-target.txt', 'C:/Users/Cyrhiel/AppData/Local/Temp', { nameOnly: true });
       const globSearch = await window.opus8.globSearch('hormachuelos-specific-file-target.txt', 'C:/Users/Cyrhiel/AppData/Local/Temp');
       const grepSearch = await window.opus8.grepSearch({ pattern: 'hormachuelos-specific-file-target.txt', basePath: 'C:/Users/Cyrhiel/AppData/Local/Temp', nameOnly: true });
+      const appDataDir = 'C:/Users/Cyrhiel/AppData/Local/Programs/HormachuelosSearchProbe';
+      const appDataPak = `${appDataDir}/hormachuelos-appdata-resource-target.pak`;
+      await window.opus8.mkdir(appDataDir);
+      await window.opus8.writeFile(appDataPak, 'appdata-search-target');
+      const appDataFind = await window.opus8.findFiles('hormachuelos-appdata-resource-target.pak', '');
+      const appDataGlob = await window.opus8.globSearch('**/hormachuelos-appdata-resource-target.pak', '');
       await window.opus8.setCwd(oldCwd);
       const fallbackFile = 'C:/Users/Cyrhiel/Pictures/hormachuelos-specific-file-target.txt';
       await window.opus8.writeFile(fallbackFile, 'needle-for-hormachuelos-search');
       const basenameRead = await window.opus8.readFile('hormachuelos-specific-file-target.txt');
       await window.opus8.deleteFile(tempFile);
       await window.opus8.deleteFile(fallbackFile);
+      await window.opus8.deleteFile(appDataDir);
 
       const msg = document.createElement('div');
       msg.textContent = 'Preview ready at http://localhost:4321 and docs at https://example.com';
@@ -352,6 +359,10 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
         fileSearchFound: fileSearch.success === true && fileSearch.matches.some((item) => /hormachuelos-specific-file-target\.txt/i.test(item.file || item.path || '')),
         globSearchFound: globSearch.success === true && globSearch.matches.some((item) => /hormachuelos-specific-file-target\.txt/i.test(item.path || item.relativePath || '')),
         grepNameSearchFound: grepSearch.success === true && grepSearch.matches.some((item) => /hormachuelos-specific-file-target\.txt/i.test(item.file || item.path || '')),
+        appDataFindFound: appDataFind.success === true && appDataFind.matches.some((item) => /hormachuelos-appdata-resource-target\.pak/i.test(item.file || item.path || '')),
+        appDataFindDirectory: appDataFind.matches.find((item) => /hormachuelos-appdata-resource-target\.pak/i.test(item.file || item.path || ''))?.directory || '',
+        appDataGlobFound: appDataGlob.success === true && appDataGlob.matches.some((item) => /hormachuelos-appdata-resource-target\.pak/i.test(item.file || item.path || '')),
+        appDataGlobDirectory: appDataGlob.matches.find((item) => /hormachuelos-appdata-resource-target\.pak/i.test(item.file || item.path || ''))?.directory || '',
         basenameReadFound: basenameRead.success === true && basenameRead.content === 'needle-for-hormachuelos-search' && basenameRead.foundBySearch === true,
         duplicateToolVisible: getComputedStyle(toolRowB).display !== 'none',
         toolProgressVisible: displayOf(toolAssistant.querySelector('.horm-tool-progress-echo')) !== 'none',
@@ -482,6 +493,10 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
     assert.equal(result.fileSearchFound, true);
     assert.equal(result.globSearchFound, true);
     assert.equal(result.grepNameSearchFound, true);
+    assert.equal(result.appDataFindFound, true);
+    assert.match(result.appDataFindDirectory, /AppData[\\/]Local[\\/]Programs[\\/]HormachuelosSearchProbe/i);
+    assert.equal(result.appDataGlobFound, true);
+    assert.match(result.appDataGlobDirectory, /AppData[\\/]Local[\\/]Programs[\\/]HormachuelosSearchProbe/i);
     assert.equal(result.basenameReadFound, true);
     assert.equal(result.duplicateToolVisible, false);
     assert.equal(result.toolProgressVisible, false);

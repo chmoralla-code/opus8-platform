@@ -1230,6 +1230,29 @@ function uniqueExistingDirs(dirs) {
   return results;
 }
 
+function applicationSearchRoots() {
+  const home = os.homedir();
+  return [
+    path.join(home, 'AppData', 'Local', 'Programs'),
+    process.env.LOCALAPPDATA,
+    path.join(home, 'AppData', 'Local'),
+    process.env.APPDATA,
+    path.join(home, 'AppData', 'Roaming'),
+    process.env.ProgramFiles,
+    process.env['ProgramFiles(x86)'],
+    process.env.ProgramData,
+  ];
+}
+
+function isDriveRoot(dir) {
+  try {
+    const resolved = path.resolve(toLocalPath(String(dir || '')));
+    return resolved.toLowerCase() === path.parse(resolved).root.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
 function defaultSearchRoots(searchPath, options = {}) {
   const requested = searchPath ? [searchPath] : [];
   const home = os.homedir();
@@ -1242,9 +1265,41 @@ function defaultSearchRoots(searchPath, options = {}) {
     path.join(home, 'Downloads'),
     path.join(home, 'Pictures'),
   ];
+  if (options.includeApplicationDirs) {
+    roots.push(...applicationSearchRoots());
+  }
   if (options.searchEverywhere || options.wholeComputer || options.allDrives) {
     const driveRoot = path.parse(home).root || 'C:\\';
     roots.push(driveRoot);
+  }
+  return uniqueExistingDirs(roots);
+}
+
+function filenameSearchRoots(searchPath, options = {}) {
+  const requested = searchPath ? [searchPath] : [];
+  const focused = [];
+  const broad = [];
+  for (const dir of requested) {
+    if (isDriveRoot(dir)) broad.push(dir);
+    else focused.push(dir);
+  }
+  const home = os.homedir();
+  const currentIsBroad = isDriveRoot(currentWorkingDir)
+    || path.resolve(currentWorkingDir).toLowerCase() === path.resolve(home).toLowerCase();
+  const roots = [
+    ...focused,
+    ...(currentIsBroad ? [] : [currentWorkingDir]),
+    ...applicationSearchRoots(),
+    ...(currentIsBroad ? [currentWorkingDir] : []),
+    home,
+    path.join(home, 'Desktop'),
+    path.join(home, 'Documents'),
+    path.join(home, 'Downloads'),
+    path.join(home, 'Pictures'),
+    ...broad,
+  ];
+  if (options.searchEverywhere || options.wholeComputer || options.allDrives) {
+    roots.push(path.parse(home).root || 'C:\\');
   }
   return uniqueExistingDirs(roots);
 }
@@ -1255,14 +1310,22 @@ function looksLikeFileName(value) {
   return /[.][A-Za-z0-9]{1,12}$/.test(path.basename(text)) || /^[\w .()[\]-]+$/.test(text);
 }
 
+function concreteFileNameFromGlob(pattern) {
+  const text = String(pattern || '').trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/');
+  const name = path.posix.basename(text);
+  if (!name || /[*?[\]{}]/.test(name)) return '';
+  return looksLikeFileName(name) ? name : '';
+}
+
 async function findFilesByName(query, searchPath, options = {}) {
   const raw = String(query || '').trim().replace(/^["']|["']$/g, '');
   if (!raw) return [];
   const targetName = path.basename(raw).toLowerCase();
   const contains = targetName.replace(/\*/g, '').toLowerCase();
-  const roots = defaultSearchRoots(searchPath, options);
+  const roots = options.roots || filenameSearchRoots(searchPath, options);
   const maxResults = Math.max(1, Math.min(Number(options.maxResults || options.limit || 100), 500));
   const maxDirs = Math.max(200, Math.min(Number(options.maxDirs || 12000), 60000));
+  const deadline = Date.now() + Math.max(1000, Math.min(Number(options.timeoutMs || options.maxMs || 20000), 60000));
   const exact = [];
   const fuzzy = [];
   const matchedPaths = new Set();
@@ -1280,6 +1343,7 @@ async function findFilesByName(query, searchPath, options = {}) {
         path: fullPath,
         file: fullPath,
         name,
+        directory: path.dirname(fullPath),
         root,
         relativePath: path.relative(root, fullPath),
         size: stat.size,
@@ -1291,12 +1355,12 @@ async function findFilesByName(query, searchPath, options = {}) {
   }
 
   async function walk(dir, root) {
-    if (exact.length + fuzzy.length >= maxResults || visitedDirs >= maxDirs) return;
+    if (Date.now() > deadline || exact.length + fuzzy.length >= maxResults || visitedDirs >= maxDirs) return;
     visitedDirs++;
     let entries;
     try { entries = await fsPromises.readdir(dir, { withFileTypes: true }); } catch { return; }
     for (const entry of entries) {
-      if (exact.length + fuzzy.length >= maxResults || visitedDirs >= maxDirs) return;
+      if (Date.now() > deadline || exact.length + fuzzy.length >= maxResults || visitedDirs >= maxDirs) return;
       const nameLower = entry.name.toLowerCase();
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
@@ -1321,7 +1385,7 @@ async function findFilesByName(query, searchPath, options = {}) {
 
   for (const root of roots) {
     await walk(root, root);
-    if (exact.length >= maxResults) break;
+    if (Date.now() > deadline || exact.length >= maxResults) break;
   }
   return exact.concat(fuzzy).slice(0, maxResults);
 }
@@ -1348,20 +1412,22 @@ ipcMain.handle('search_files', async (_event, query, searchPath, options = {}) =
   const matches = [];
   const roots = defaultSearchRoots(searchPath, options);
   if (!options.contentOnly && looksLikeFileName(query)) {
-    const nameMatches = await findFilesByName(query, searchPath, { ...options, maxResults: MAX_MATCHES });
+    const filenameRoots = filenameSearchRoots(searchPath, options);
+    const nameMatches = await findFilesByName(query, searchPath, { ...options, maxResults: MAX_MATCHES, roots: filenameRoots });
     for (const item of nameMatches) {
       matches.push({
         file: item.path,
         path: item.path,
+        directory: item.directory,
         line: 0,
-        content: `Filename match: ${item.relativePath || item.name}`,
+        content: `Filename match: ${item.relativePath || item.name} (${item.directory})`,
         kind: 'filename',
         size: item.size,
         modified: item.modified,
       });
     }
     if (options.nameOnly || matches.length >= MAX_MATCHES) {
-      return { success: true, matches: matches.slice(0, MAX_MATCHES), roots, total: matches.length };
+      return { success: true, matches: matches.slice(0, MAX_MATCHES), roots: filenameRoots, total: matches.length };
     }
   }
   let pattern;
@@ -1430,9 +1496,24 @@ ipcMain.handle('glob_search', async (_event, pattern, basePath) => {
     const results = [];
     const MAX = 500;
     const SKIP = new Set(['node_modules', '.git', '.svn', '__pycache__', 'dist', 'build', '.cache', '.next']);
-    if (looksLikeFileName(pattern) && !String(pattern).includes('*') && !String(pattern).includes('?')) {
-      const found = await findFilesByName(pattern, basePath, { maxResults: MAX });
-      return { success: true, matches: found.map((item) => ({ path: item.path, relativePath: item.relativePath, size: item.size, modified: item.modified })), total: found.length, roots };
+    const concreteName = concreteFileNameFromGlob(pattern);
+    if (concreteName) {
+      const filenameRoots = filenameSearchRoots(basePath, {});
+      const found = await findFilesByName(concreteName, basePath, { maxResults: MAX, roots: filenameRoots });
+      const filtered = found.filter((item) => {
+        const normalizedPath = item.path.replace(/\\/g, '/');
+        return regex.test(item.relativePath.replace(/\\/g, '/')) || regex.test(item.name) || regex.test(normalizedPath);
+      });
+      const matches = (filtered.length > 0 ? filtered : found).map((item) => ({
+        path: item.path,
+        file: item.path,
+        name: item.name,
+        directory: item.directory,
+        relativePath: item.relativePath,
+        size: item.size,
+        modified: item.modified,
+      }));
+      return { success: true, matches, total: matches.length, roots: filenameRoots };
     }
     async function walk(dir, root) {
       if (results.length >= MAX) return;
@@ -1448,8 +1529,8 @@ ipcMain.handle('glob_search', async (_event, pattern, basePath) => {
         } else if (regex.test(rel) || regex.test(e.name)) {
           try {
             const stat = await fsPromises.stat(full);
-            results.push({ path: full, relativePath: rel, size: stat.size, modified: stat.mtime.toISOString() });
-          } catch { results.push({ path: full, relativePath: rel, size: 0, modified: null }); }
+            results.push({ path: full, file: full, name: e.name, directory: path.dirname(full), relativePath: rel, size: stat.size, modified: stat.mtime.toISOString() });
+          } catch { results.push({ path: full, file: full, name: e.name, directory: path.dirname(full), relativePath: rel, size: 0, modified: null }); }
         }
       }
     }
@@ -1476,12 +1557,13 @@ ipcMain.handle('grep_search', async (_event, options = {}) => {
     try { incRe = new RegExp('^' + include.replace(/\./g, '\\.').replace(/\*/g, '[^/\\\\]*').replace(/\{([^}]+)\}/g, (_, p) => '('+p.replace(/,/g, '|')+')') + '$', 'i'); } catch {}
   }
   if (!options.contentOnly && looksLikeFileName(pattern)) {
-    const found = await findFilesByName(pattern, basePath, { maxResults });
+    const filenameRoots = filenameSearchRoots(basePath, options);
+    const found = await findFilesByName(pattern, basePath, { maxResults, roots: filenameRoots });
     for (const item of found) {
-      results.push({ file: item.path, path: item.path, line: 0, content: `Filename match: ${item.relativePath || item.name}`, kind: 'filename' });
+      results.push({ file: item.path, path: item.path, directory: item.directory, line: 0, content: `Filename match: ${item.relativePath || item.name} (${item.directory})`, kind: 'filename' });
       if (results.length >= maxResults) break;
     }
-    if (options.nameOnly || results.length >= maxResults) return { success: true, matches: results, total: results.length, roots };
+    if (options.nameOnly || results.length >= maxResults) return { success: true, matches: results, total: results.length, roots: filenameRoots };
   }
   async function walk(dir, root) {
     if (results.length >= maxResults) return;
@@ -1507,7 +1589,7 @@ ipcMain.handle('grep_search', async (_event, options = {}) => {
             if (results.length >= maxResults) return;
             regex.lastIndex = 0;
             if (regex.test(lines[i])) {
-              const entry = { file: full, relativePath: rel, line: i + 1, content: lines[i].trimEnd() };
+              const entry = { file: full, path: full, directory: path.dirname(full), relativePath: rel, line: i + 1, content: lines[i].trimEnd() };
               if (contextLines > 0) {
                 entry.context = [];
                 for (let c = Math.max(0, i - contextLines); c <= Math.min(lines.length - 1, i + contextLines); c++) {
