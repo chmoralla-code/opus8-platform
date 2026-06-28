@@ -111,10 +111,19 @@
       el.querySelector('.session-item');
   }
 
-  function isUserMessage(el) {
+  function hasAssistantSignal(el) {
     var cls = classText(el);
     var parentCls = classText(el.parentElement);
-    return /bg-claude-accent|god-mode-user-bubble|from-indigo|to-purple|text-white/.test(cls) ||
+    if (/god-mode-bubble|role-assistant|message-assistant|horm-codex-assistant/.test(cls) && !/god-mode-user-bubble/.test(cls)) return true;
+    if (/horm-codex-row-assistant/.test(parentCls) && !/horm-codex-row-user/.test(parentCls)) return true;
+    return false;
+  }
+
+  function isUserMessage(el) {
+    if (hasAssistantSignal(el)) return false;
+    var cls = classText(el);
+    var parentCls = classText(el.parentElement);
+    return /bg-claude-accent|god-mode-user-bubble|from-indigo|to-purple/.test(cls) ||
       /justify-end|items-end/.test(parentCls);
   }
 
