@@ -272,6 +272,27 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
       window.__hormProductPolish.scan(syntheticComposer);
       const syntheticPlaceholder = syntheticComposer.querySelector('textarea')?.placeholder || '';
 
+      const noisyModelControl = document.createElement('button');
+      noisyModelControl.title = 'Select AI Model';
+      noisyModelControl.innerHTML = '<span>OpenRouter (free) (free) (free) (free)</span><span>▼</span>';
+      document.body.appendChild(noisyModelControl);
+      const noisyModelPlaceholder = document.createElement('textarea');
+      noisyModelPlaceholder.setAttribute('placeholder', 'Ask OpenRouter (free) (free) (free) what to build...');
+      document.body.appendChild(noisyModelPlaceholder);
+      for (let n = 0; n < 8; n++) {
+        window.__hormProductPolish.scan(noisyModelControl);
+        window.__hormProductPolish.scan(noisyModelPlaceholder);
+      }
+      const noisyModelText = noisyModelControl.querySelector('span')?.textContent || '';
+      const noisyModelFullText = noisyModelControl.textContent || '';
+      const noisyModelFreeCount = (noisyModelFullText.match(/\(free\)/gi) || []).length;
+      const noisyPlaceholderText = noisyModelPlaceholder.getAttribute('placeholder') || '';
+      const noisyPlaceholderFreeCount = (noisyPlaceholderText.match(/\(free\)/gi) || []).length;
+      const oldModelHeading = document.createElement('h2');
+      oldModelHeading.textContent = 'Claude Opus Code (Free)';
+      document.body.appendChild(oldModelHeading);
+      window.__hormProductPolish.scan(oldModelHeading);
+
       const confusingChrome = document.createElement('div');
       confusingChrome.id = 'horm-test-confusing-chrome';
       confusingChrome.innerHTML = [
@@ -348,6 +369,11 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
         chatboxTextareaMinHeight: parseFloat(chatboxTextareaStyle?.minHeight || '0'),
         syntheticComposerTextareaKept: !!syntheticComposer.querySelector('textarea'),
         syntheticPlaceholder,
+        noisyModelText,
+        noisyModelFreeCount,
+        noisyPlaceholderText,
+        noisyPlaceholderFreeCount,
+        oldModelHeadingText: oldModelHeading.textContent || '',
         syntheticComposerSvgHidden: displayOf(syntheticComposer.querySelector('svg')) === 'none',
         kbdHintHidden: displayOf(confusingChrome.querySelector('.horm-kbd-hint')) === 'none',
         agenticToggleHidden: displayOf(confusingChrome.querySelector('.horm-agentic-toggle')) === 'none',
@@ -464,6 +490,11 @@ test('monochrome theme, visible tool execution, and live preview helpers are act
     assert.ok(result.chatboxTextareaMinHeight >= 64);
     assert.equal(result.syntheticComposerTextareaKept, true);
     assert.match(result.syntheticPlaceholder, /OpenRouter \(free\)/);
+    assert.equal(result.noisyModelText, 'OpenRouter (free)');
+    assert.equal(result.noisyModelFreeCount, 1);
+    assert.match(result.noisyPlaceholderText, /Ask OpenRouter \(free\) what to build/);
+    assert.equal(result.noisyPlaceholderFreeCount, 1);
+    assert.equal(result.oldModelHeadingText, 'OpenRouter (free)');
     assert.equal(result.syntheticComposerSvgHidden, true);
     assert.equal(result.kbdHintHidden, true);
     assert.equal(result.agenticToggleHidden, true);

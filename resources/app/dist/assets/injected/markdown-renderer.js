@@ -120,9 +120,14 @@
 
   function brandedModelName(value) {
     var text = String(value || '').replace(/[\u{1F300}-\u{1FAFF}\u2600-\u27BF\uFE0F\u200D]/gu, '').trim();
+    text = text
+      .replace(/\b(OpenRouter|Hormachuelos)\s*\(free\)(?:\s*\(free\))+/ig, '$1 (free)')
+      .replace(/(?:\bOpenRouter\s*\(free\)\s*){2,}/ig, 'OpenRouter (free) ')
+      .replace(/(?:\bHormachuelos\s*\(free\)\s*){2,}/ig, 'Hormachuelos (free) ')
+      .trim();
     var pairs = [
-      [/pollinations-free|pollinations ai|claude opus micro \(free\)/i, 'Hormachuelos (free)'],
-      [/openrouter-free|openrouter|claude opus code \(free\)/i, 'OpenRouter (free)'],
+      [/pollinations-free|pollinations ai|hormachuelos(?:\s*\(free\))*|claude opus micro(?:\s*\(free\))*/i, 'Hormachuelos (free)'],
+      [/openrouter-free|openrouter(?:\s*\(free\))*|claude opus code(?:\s*\(free\))*/i, 'OpenRouter (free)'],
       [/\bopencode\b|claude opus flash/i, 'OpenCode'],
       [/deepseek-v4-flash|claude opus plus/i, 'DeepSeek V4 Flash'],
       [/deepseek-v4-pro|claude opus max coding/i, 'DeepSeek V4 Pro']

@@ -91,11 +91,11 @@
   }
 
   var MODEL_BRANDS = [
-    { match: /pollinations-free|pollinations ai|claude opus micro \(free\)/i, label: 'Hormachuelos (free)', brand: 'H' },
-    { match: /openrouter-free|openrouter|claude opus code \(free\)/i, label: 'OpenRouter (free)', brand: 'OR' },
-    { match: /\bopencode\b|claude opus flash/i, label: 'OpenCode', brand: 'OC' },
-    { match: /deepseek-v4-flash|claude opus plus/i, label: 'DeepSeek V4 Flash', brand: 'DS' },
-    { match: /deepseek-v4-pro|claude opus max coding/i, label: 'DeepSeek V4 Pro', brand: 'DS' }
+    { match: /pollinations-free|pollinations ai|hormachuelos(?:\s*\(free\))*|claude opus micro(?:\s*\(free\))*/i, replace: /\b(?:pollinations-free|pollinations ai|hormachuelos(?:\s*\(free\))*|claude opus micro(?:\s*\(free\))*)\b/ig, label: 'Hormachuelos (free)', brand: 'H' },
+    { match: /openrouter-free|openrouter(?:\s*\(free\))*|claude opus code(?:\s*\(free\))*/i, replace: /\b(?:openrouter-free|openrouter(?:\s*\(free\))*|claude opus code(?:\s*\(free\))*)\b/ig, label: 'OpenRouter (free)', brand: 'OR' },
+    { match: /\bopencode\b|claude opus flash/i, replace: /\b(?:opencode|claude opus flash)\b/ig, label: 'OpenCode', brand: 'OC' },
+    { match: /deepseek-v4-flash|claude opus plus/i, replace: /\b(?:deepseek-v4-flash|claude opus plus)\b/ig, label: 'DeepSeek V4 Flash', brand: 'DS' },
+    { match: /deepseek-v4-pro|claude opus max coding/i, replace: /\b(?:deepseek-v4-pro|claude opus max coding)\b/ig, label: 'DeepSeek V4 Pro', brand: 'DS' }
   ];
 
   function brandedModelName(value) {
@@ -109,9 +109,14 @@
   function replaceModelText(raw) {
     var text = String(raw || '');
     for (var i = 0; i < MODEL_BRANDS.length; i++) {
-      text = text.replace(MODEL_BRANDS[i].match, MODEL_BRANDS[i].label);
+      text = text.replace(MODEL_BRANDS[i].replace || MODEL_BRANDS[i].match, MODEL_BRANDS[i].label);
     }
-    return text.replace(/\s+/g, ' ').trim();
+    return text
+      .replace(/\b(OpenRouter|Hormachuelos)\s*\(free\)(?:\s*\(free\))+/ig, '$1 (free)')
+      .replace(/(?:\bOpenRouter\s*\(free\)\s*){2,}/ig, 'OpenRouter (free) ')
+      .replace(/(?:\bHormachuelos\s*\(free\)\s*){2,}/ig, 'Hormachuelos (free) ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   function activeModelLabel() {
@@ -465,8 +470,8 @@
   function applyModelBranding(root) {
     var scope = root && root.querySelectorAll ? root : document;
     var nodes = [];
-    if (scope.matches && scope.matches('button,span,div,textarea,.horm-codex-model')) nodes.push(scope);
-    var found = scope.querySelectorAll ? scope.querySelectorAll('button,span,div,textarea,.horm-codex-model') : [];
+    if (scope.matches && scope.matches('button,span,div,h1,h2,h3,h4,p,label,small,textarea,.horm-codex-model')) nodes.push(scope);
+    var found = scope.querySelectorAll ? scope.querySelectorAll('button,span,div,h1,h2,h3,h4,p,label,small,textarea,.horm-codex-model') : [];
     for (var f = 0; f < found.length; f++) nodes.push(found[f]);
 
     for (var i = 0; i < nodes.length; i++) {
